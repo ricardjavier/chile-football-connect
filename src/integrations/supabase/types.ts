@@ -14,7 +14,167 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      match_players: {
+        Row: {
+          id: string
+          joined_at: string | null
+          match_id: string
+          player_id: string
+          status: string | null
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          match_id: string
+          player_id: string
+          status?: string | null
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          match_id?: string
+          player_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          city: string
+          created_at: string | null
+          creator_id: string
+          current_players: number | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_public: boolean | null
+          latitude: number | null
+          location_address: string | null
+          location_name: string
+          longitude: number | null
+          match_date: string
+          match_time: string
+          max_players: number
+          price_per_player: number | null
+          skill_level: Database["public"]["Enums"]["skill_level"]
+          status: Database["public"]["Enums"]["match_status"] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          city?: string
+          created_at?: string | null
+          creator_id: string
+          current_players?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_public?: boolean | null
+          latitude?: number | null
+          location_address?: string | null
+          location_name: string
+          longitude?: number | null
+          match_date: string
+          match_time: string
+          max_players?: number
+          price_per_player?: number | null
+          skill_level?: Database["public"]["Enums"]["skill_level"]
+          status?: Database["public"]["Enums"]["match_status"] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string | null
+          creator_id?: string
+          current_players?: number | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_public?: boolean | null
+          latitude?: number | null
+          location_address?: string | null
+          location_name?: string
+          longitude?: number | null
+          match_date?: string
+          match_time?: string
+          max_players?: number
+          price_per_player?: number | null
+          skill_level?: Database["public"]["Enums"]["skill_level"]
+          status?: Database["public"]["Enums"]["match_status"] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          matches_created: number | null
+          matches_played: number | null
+          nickname: string | null
+          phone: string | null
+          rating: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          matches_created?: number | null
+          matches_played?: number | null
+          nickname?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          matches_created?: number | null
+          matches_played?: number | null
+          nickname?: string | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +183,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      match_status:
+        | "abierto"
+        | "lleno"
+        | "en_curso"
+        | "finalizado"
+        | "cancelado"
+      skill_level: "principiante" | "intermedio" | "avanzado" | "mixto"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +316,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      match_status: ["abierto", "lleno", "en_curso", "finalizado", "cancelado"],
+      skill_level: ["principiante", "intermedio", "avanzado", "mixto"],
+    },
   },
 } as const
