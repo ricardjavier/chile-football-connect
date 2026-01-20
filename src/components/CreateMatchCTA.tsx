@@ -1,4 +1,6 @@
+// src/components/CreateMatchCTA.tsx
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Plus, Users, MapPin, Clock, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -51,14 +53,16 @@ const CreateMatchCTA = () => {
               transition={{ delay: 0.4 }}
               className="mt-10"
             >
-              <Button
-                variant="hero"
-                size="xl"
-                className="group bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-              >
-                <Plus className="h-5 w-5" />
-                Crear mi partido
-              </Button>
+              <Link to="/crear-partido">
+                <Button
+                  variant="hero"
+                  size="xl"
+                  className="group bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                >
+                  <Plus className="h-5 w-5" />
+                  Crear mi partido
+                </Button>
+              </Link>
             </motion.div>
           </motion.div>
 

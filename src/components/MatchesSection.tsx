@@ -1,73 +1,97 @@
+// src/components/MatchesSection.tsx
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import MatchCard from "@/components/MatchCard";
-import MatchFilters from "@/components/MatchFilters";
+import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { Match, Field } from "@/types/database";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Clock, Users, Calendar } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import MatchFilters from "./MatchFilters.tsx";
 
-const matches = [
-  {
-    title: "Pichanga domingo mañana",
-    location: "Cancha El Pinar",
-    city: "Santiago",
-    date: "Dom 19 Ene",
-    time: "10:00",
-    playersNeeded: 4,
-    totalPlayers: 14,
-    level: "Intermedio" as const,
-    isHighlighted: true,
-  },
-  {
-    title: "Fútbol 7 después del trabajo",
-    location: "Complejo El Tranque",
-    city: "Valparaíso",
-    date: "Mié 15 Ene",
-    time: "19:30",
-    playersNeeded: 3,
-    totalPlayers: 14,
-    level: "Principiante" as const,
-  },
-  {
-    title: "Partido competitivo",
-    location: "Estadio Municipal",
-    city: "Concepción",
-    date: "Sáb 18 Ene",
-    time: "16:00",
-    playersNeeded: 6,
-    totalPlayers: 22,
-    level: "Avanzado" as const,
-  },
-  {
-    title: "Fútbol mixto familiar",
-    location: "Parque O'Higgins",
-    city: "Santiago",
-    date: "Dom 19 Ene",
-    time: "11:00",
-    playersNeeded: 8,
-    totalPlayers: 16,
-    level: "Principiante" as const,
-  },
-  {
-    title: "Liga amateur - Jornada 5",
-    location: "Complejo Deportivo UC",
-    city: "Santiago",
-    date: "Sáb 18 Ene",
-    time: "15:00",
-    playersNeeded: 2,
-    totalPlayers: 22,
-    level: "Avanzado" as const,
-    isHighlighted: true,
-  },
-  {
-    title: "Pichanga nocturna",
-    location: "Canchas La Reina",
-    city: "Santiago",
-    date: "Vie 17 Ene",
-    time: "21:00",
-    playersNeeded: 5,
-    totalPlayers: 12,
-    level: "Intermedio" as const,
-  },
-];
+interface MatchWithField extends Match {
+  field: Field | null;
+}
 
 const MatchesSection = () => {
+  const [matches, setMatches] = useState<MatchWithField[]>([]);
+  const [filteredMatches, setFilteredMatches] = useState<MatchWithField[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({ city: 'Todas', time: 'all', level: 'all' });
+
+  useEffect(() => {
+    loadMatches();
+  }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [filters, matches]);
+
+  const loadMatches = async () => {
+    try {
+      const { data } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          field:field_id(*)
+        `)
+        .eq('status', 'abierto')
+        .gte('date', new Date().toISOString().split('T')[0])
+        .order('date', { ascending: true })
+        .limit(20);
+
+      if (data) {
+        setMatches(data as any);
+        setFilteredMatches(data as any);
+      }
+    } catch (error) {
+      console.error('Error loading matches:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...matches];
+
+    // Filtrar por ciudad
+    if (filters.city !== 'Todas') {
+      filtered = filtered.filter(m => m.field?.city === filters.city);
+    }
+
+
+    // Filtrar por nivel
+    if (filters.level !== 'all') {
+      filtered = filtered.filter(m => m.level_required === filters.level);
+    }
+
+    // Filtrar por horario
+    if (filters.time !== 'all') {
+      filtered = filtered.filter(m => {
+        const hour = parseInt(m.time.split(':')[0]);
+        if (filters.time === 'morning') return hour >= 6 && hour < 12;
+        if (filters.time === 'afternoon') return hour >= 12 && hour < 18;
+        if (filters.time === 'evening') return hour >= 18 && hour < 23;
+        return true;
+      });
+    }
+
+    setFilteredMatches(filtered);
+  };
+
+  const getLevelColor = (level: string) => {
+    const colors = {
+      todos: 'bg-gray-100 text-gray-800',
+      principiante: 'bg-emerald-100 text-emerald-700',
+      intermedio: 'bg-amber-100 text-amber-700',
+      avanzado: 'bg-rose-100 text-rose-700',
+    };
+    return colors[level as keyof typeof colors] || colors.todos;
+  };
+
   return (
     <section id="partidos" className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -89,31 +113,103 @@ const MatchesSection = () => {
           {/* Filters sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
-              <MatchFilters />
+              <MatchFilters onFilterChange={setFilters} />
             </div>
           </div>
 
           {/* Match cards grid */}
           <div className="lg:col-span-3">
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {matches.map((match, index) => (
-                <MatchCard key={index} {...match} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredMatches.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">
+                  {matches.length === 0 
+                    ? "No hay partidos disponibles aún" 
+                    : "No hay partidos con estos filtros"}
+                </p>
+                {matches.length === 0 && (
+                  <Link to="/crear-partido">
+                    <Button>Crear el primer partido</Button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-2">
+                {filteredMatches.slice(0, 6).map((match) => (
+              <motion.div
+                key={match.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <Card className="hover:shadow-lg transition-shadow h-full">
+                  <CardHeader>
+                    <div className="flex justify-between items-start gap-2">
+                      <CardTitle className="text-lg line-clamp-1">
+                        {match.field?.name || 'Cancha Municipal'}
+                      </CardTitle>
+                      <Badge className={getLevelColor(match.level_required)}>
+                        {match.level_required}
+                      </Badge>
+                    </div>
+                    <CardDescription className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      <span className="line-clamp-1">{match.field?.address}</span>
+                    </CardDescription>
+                  </CardHeader>
 
-            {/* Load more */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="mt-12 text-center"
-            >
-              <button className="rounded-full border-2 border-primary px-8 py-3 font-semibold text-primary transition-all hover:bg-primary hover:text-primary-foreground">
-                Ver más partidos
-              </button>
-            </motion.div>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>{format(new Date(match.date), "d 'de' MMM", { locale: es })}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{match.time.slice(0, 5)} hrs</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span>
+                        {match.current_players}/{match.max_players} jugadores
+                      </span>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter>
+                    <Link to={`/partidos/${match.id}`} className="w-full">
+                      <Button variant="default" className="w-full">
+                        Ver Detalles
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Ver más */}
+        {filteredMatches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="mt-12 text-center"
+          >
+            <Link to="/partidos">
+              <Button variant="outline" size="lg" className="rounded-full">
+                Ver todos los partidos
+              </Button>
+            </Link>
+          </motion.div>
+        )}
       </div>
     </section>
   );

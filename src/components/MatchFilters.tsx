@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/components/MatchFilters.tsx
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Clock, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,29 +7,65 @@ import { Button } from "@/components/ui/button";
 const cities = [
   "Todas",
   "Santiago",
-  "Valparaíso",
-  "Concepción",
-  "La Serena",
-  "Temuco",
-  "Antofagasta",
-  "Viña del Mar",
+  "La Florida",
+  "La Pintana",
+  "Maipú",
+  "Departamental",
+  "Ñuñoa",
+  "Macul",
+  "Las Condes",
+  "Vitacura",
+  "Providencia",
+  "Independencia",
+  "Recoleta",
+  "Quinta Normal",
+  "Cerrillos",
+  "Lo Espejo",
 ];
 
-const timeSlots = ["Cualquier hora", "Mañana", "Tarde", "Noche"];
+const timeSlots = [
+  { label: "Cualquier hora", value: "all" },
+  { label: "Mañana (06:00-12:00)", value: "morning" },
+  { label: "Tarde (12:00-18:00)", value: "afternoon" },
+  { label: "Noche (18:00-23:00)", value: "evening" },
+];
 
-const levels = ["Todos", "Principiante", "Intermedio", "Avanzado"];
+const levels = [
+  { label: "Todos", value: "all" },
+  { label: "Todos los niveles", value: "todos" },
+  { label: "Principiante", value: "principiante" },
+  { label: "Intermedio", value: "intermedio" },
+  { label: "Avanzado", value: "avanzado" },
+
+  
+
+
+];
 
 interface FiltersProps {
-  onFilterChange?: (filters: { city: string; time: string; level: string }) => void;
+  onFilterChange?: (filters: { city: string; time: string; level: string; }) => void;
 }
 
 const MatchFilters = ({ onFilterChange }: FiltersProps) => {
   const [selectedCity, setSelectedCity] = useState("Todas");
-  const [selectedTime, setSelectedTime] = useState("Cualquier hora");
-  const [selectedLevel, setSelectedLevel] = useState("Todos");
+  const [selectedTime, setSelectedTime] = useState("all");
+  const [selectedLevel, setSelectedLevel] = useState("all");
+
   const [showAllCities, setShowAllCities] = useState(false);
 
   const displayedCities = showAllCities ? cities : cities.slice(0, 5);
+
+  // Notificar cambios al padre
+  useEffect(() => {
+    if (onFilterChange) {
+      onFilterChange({
+        city: selectedCity,
+        time: selectedTime,
+        level: selectedLevel,
+        
+      });
+    }
+  }, [selectedCity, selectedTime, selectedLevel, onFilterChange]);
 
   return (
     <motion.div
@@ -86,19 +123,19 @@ const MatchFilters = ({ onFilterChange }: FiltersProps) => {
           Horario
         </div>
         <div className="flex flex-wrap gap-2">
-          {timeSlots.map((time) => (
+          {timeSlots.map((slot) => (
             <Button
-              key={time}
+              key={slot.value}
               variant="pill"
               size="sm"
-              onClick={() => setSelectedTime(time)}
+              onClick={() => setSelectedTime(slot.value)}
               className={
-                selectedTime === time
+                selectedTime === slot.value
                   ? "bg-primary text-primary-foreground"
                   : ""
               }
             >
-              {time}
+              {slot.label}
             </Button>
           ))}
         </div>
@@ -112,21 +149,24 @@ const MatchFilters = ({ onFilterChange }: FiltersProps) => {
         <div className="flex flex-wrap gap-2">
           {levels.map((level) => (
             <Button
-              key={level}
+              key={level.value}
               variant="pill"
               size="sm"
-              onClick={() => setSelectedLevel(level)}
+              onClick={() => setSelectedLevel(level.value)}
               className={
-                selectedLevel === level
+                selectedLevel === level.value
                   ? "bg-primary text-primary-foreground"
                   : ""
               }
             >
-              {level}
+              {level.label}
             </Button>
           ))}
         </div>
       </div>
+
+
+
     </motion.div>
   );
 };

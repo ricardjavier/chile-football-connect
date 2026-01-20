@@ -1,4 +1,6 @@
+// src/components/HeroSection.tsx
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { MapPin, Calendar, Users, Trophy, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroImage from "@/assets/hero-football.jpg";
@@ -73,14 +75,18 @@ const HeroSection = () => {
             transition={{ delay: 0.6, duration: 0.5 }}
             className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center"
           >
-            <Button variant="hero" size="xl" className="group">
-              <Calendar className="h-5 w-5" />
-              Ver partidos disponibles
-              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-            <Button variant="heroOutline" size="xl">
-              Crear partido
-            </Button>
+            <Link to="/partidos">
+              <Button variant="hero" size="xl" className="group">
+                <Calendar className="h-5 w-5" />
+                Ver partidos disponibles
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+            <Link to="/crear-partido">
+              <Button variant="heroOutline" size="xl">
+                Crear partido
+              </Button>
+            </Link>
           </motion.div>
         </motion.div>
 

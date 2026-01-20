@@ -1,4 +1,6 @@
+// src/components/MatchCard.tsx
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { MapPin, Clock, Users, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -92,10 +94,12 @@ const MatchCard = ({
         </div>
       </div>
 
-      <Button variant="default" className="w-full group">
-        Unirse al partido
-        <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-      </Button>
+      <Link to="/partidos">
+        <Button variant="default" className="w-full group">
+          Ver partidos reales
+          <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Button>
+      </Link>
     </motion.div>
   );
 };
