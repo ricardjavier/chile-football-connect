@@ -16,7 +16,7 @@ export interface Profile {
 }
 
 export interface Field {
-  fecha: any;
+  fecha: string | null;
   id: string;
   name: string;
   address: string;

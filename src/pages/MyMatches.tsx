@@ -1,5 +1,5 @@
 // src/pages/MyMatches.tsx
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -77,15 +77,29 @@ export default function MyMatches() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadMyMatches();
-    } else {
-      navigate('/login');
-    }
-  }, [user]);
+  const loadMatchPlayers = useCallback(async (matchId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('match_players')
+        .select(`
+          id,
+          user_id,
+          profiles(id, full_name, level)
+        `)
+        .eq('match_id', matchId);
 
-  const loadMyMatches = async () => {
+      if (error) throw error;
+
+      setPlayers(prev => ({
+        ...prev,
+        [matchId]: data as any
+      }));
+    } catch (error) {
+      console.error('Error loading players:', error);
+    }
+  }, []);
+
+  const loadMyMatches = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('matches')
@@ -115,29 +129,15 @@ export default function MyMatches() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadMatchPlayers, toast, user?.id]);
 
-  const loadMatchPlayers = async (matchId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('match_players')
-        .select(`
-          id,
-          user_id,
-          profiles(id, full_name, level)
-        `)
-        .eq('match_id', matchId);
-
-      if (error) throw error;
-
-      setPlayers(prev => ({
-        ...prev,
-        [matchId]: data as any
-      }));
-    } catch (error) {
-      console.error('Error loading players:', error);
+  useEffect(() => {
+    if (user) {
+      loadMyMatches();
+    } else {
+      navigate('/login');
     }
-  };
+  }, [user, navigate, loadMyMatches]);
 
   const handleRemovePlayer = async (matchId: string, playerId: string, playerName: string) => {
     try {

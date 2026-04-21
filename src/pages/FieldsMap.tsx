@@ -1,5 +1,5 @@
 // src/pages/FieldsMap.tsx
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { supabase } from '@/lib/supabase';
 import Navbar from '@/components/Navbar';
@@ -64,23 +64,7 @@ export default function FieldsMap() {
   // Centro por defecto: Santiago centro
   const defaultCenter: [number, number] = [-33.4489, -70.6693];
 
-  useEffect(() => {
-    loadFields();
-    getUserLocation();
-  }, []);
-
-  useEffect(() => {
-    filterFields();
-  }, [searchTerm, maxDistance, fields, userLocation]);
-
-  useEffect(() => {
-    // Re-renderizar mapa cuando cambie la ubicación del usuario
-    if (userLocation) {
-      setMapKey(prev => prev + 1);
-    }
-  }, [userLocation]);
-
-  const getUserLocation = () => {
+  const getUserLocation = useCallback(() => {
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -104,9 +88,9 @@ export default function FieldsMap() {
         }
       );
     }
-  };
+  }, [toast]);
 
-  const loadFields = async () => {
+  const loadFields = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('fields')
@@ -128,7 +112,7 @@ export default function FieldsMap() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Radio de la Tierra en km
@@ -142,7 +126,7 @@ export default function FieldsMap() {
     return R * c;
   };
 
-  const filterFields = () => {
+  const filterFields = useCallback(() => {
     let filtered = [...fields];
 
     // Filtrar por búsqueda
@@ -174,7 +158,23 @@ export default function FieldsMap() {
     }
 
     setFilteredFields(filtered);
-  };
+  }, [fields, maxDistance, searchTerm, userLocation]);
+
+  useEffect(() => {
+    loadFields();
+    getUserLocation();
+  }, [getUserLocation, loadFields]);
+
+  useEffect(() => {
+    filterFields();
+  }, [filterFields]);
+
+  useEffect(() => {
+    // Re-renderizar mapa cuando cambie la ubicación del usuario
+    if (userLocation) {
+      setMapKey(prev => prev + 1);
+    }
+  }, [userLocation]);
 
   const mapCenter = userLocation || defaultCenter;
 

@@ -1,5 +1,5 @@
 // src/components/MatchesSection.tsx
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
@@ -26,10 +26,6 @@ const MatchesSection = () => {
     loadMatches();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [filters, matches]);
-
   const loadMatches = async () => {
     try {
       const { data } = await supabase
@@ -54,7 +50,7 @@ const MatchesSection = () => {
     }
   };
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...matches];
 
     // Filtrar por ciudad
@@ -80,7 +76,11 @@ const MatchesSection = () => {
     }
 
     setFilteredMatches(filtered);
-  };
+  }, [filters, matches]);
+
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const getLevelColor = (level: string) => {
     const colors = {

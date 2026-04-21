@@ -1,5 +1,5 @@
 // src/pages/MatchDetail.tsx - VERSIÓN FINAL CORREGIDA
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,17 +55,7 @@ export default function MatchDetail() {
   const [isJoined, setIsJoined] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    console.log('🎯 MatchDetail montado con ID:', id);
-    console.log('👤 Usuario:', user);
-    
-    if (id) {
-      loadMatch();
-      loadPlayers();
-    }
-  }, [id, user]);
-
-  const loadMatch = async () => {
+  const loadMatch = useCallback(async () => {
     try {
       console.log('🔍 Cargando partido con ID:', id);
       
@@ -99,9 +89,9 @@ export default function MatchDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, toast]);
 
-  const loadPlayers = async () => {
+  const loadPlayers = useCallback(async () => {
     try {
       console.log('👥 Cargando jugadores del partido:', id);
       
@@ -131,7 +121,17 @@ export default function MatchDetail() {
     } catch (error: any) {
       console.error('💥 Error loading players:', error);
     }
-  };
+  }, [id, user]);
+
+  useEffect(() => {
+    console.log('🎯 MatchDetail montado con ID:', id);
+    console.log('👤 Usuario:', user);
+    
+    if (id) {
+      loadMatch();
+      loadPlayers();
+    }
+  }, [id, user, loadMatch, loadPlayers]);
 
   const handleJoin = async () => {
     if (!user) {
