@@ -64,6 +64,22 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+## AWS deployment (recommended for low cost + scalability)
+
+This repo includes CI/CD to AWS with GitHub Actions:
+
+- Workflow: `.github/workflows/deploy-aws.yml`
+- Guide: `DEPLOY_AWS.md`
+
+The recommended setup is:
+
+- Amazon S3 (static files)
+- CloudFront (CDN + HTTPS)
+- ACM certificate
+- Route53 (optional)
+
+Set the required GitHub secrets and push to `main` to deploy automatically.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
