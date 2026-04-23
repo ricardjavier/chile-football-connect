@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Matches from "./pages/Matches";
 import MatchDetail from "./pages/MatchDetail";
 import CreateMatch from "./pages/CreateMatch";
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/registro" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/recuperar-contrasena" element={<ForgotPassword />} />
+            <Route path="/restablecer-contrasena" element={<ResetPassword />} />
             <Route path="/partidos" element={<Matches />} />
             <Route path="/partidos/:id" element={<MatchDetail />} />
             

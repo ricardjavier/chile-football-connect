@@ -53,6 +53,7 @@ Debes crear estos Secrets en GitHub:
 - `AWS_ROLE_TO_ASSUME` (rol IAM para OIDC)
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_APP_URL` (URL oficial: CloudFront o dominio propio)
 
 ## 4) Configurar IAM/OIDC (sin claves largas)
 
@@ -80,7 +81,32 @@ Trust policy: limitar al repo y branch `main`.
 
 Total tipico inicial: ~USD 2-10/mes.
 
-## 7) Comandos utiles locales (opcional)
+## 7) Dejar SOLO CloudFront (sin Vercel)
+
+Para que magic link / confirmacion / recuperar contrasena NO apunten a Vercel:
+
+1. En Supabase Dashboard -> `Authentication` -> `URL Configuration`:
+   - `Site URL` = tu URL de CloudFront o dominio final
+   - `Redirect URLs` = deja solo:
+     - `https://TU_CLOUDFRONT.net/*` o `https://tu-dominio/*`
+2. Elimina cualquier URL de `vercel.app` de `Redirect URLs`.
+3. En GitHub Secrets, define `VITE_APP_URL` con la misma URL oficial.
+4. Redeploy desde GitHub Actions para que el frontend tome esa variable.
+5. Prueba de punta a punta:
+   - registro con confirmacion por email
+   - recuperar contrasena
+   - login normal
+
+### Pausar proyecto en Vercel
+
+- En Vercel Dashboard -> proyecto -> `Settings`:
+  - `Domains`: elimina dominios asociados (si aplica)
+  - `Git`: desconecta repo o desactiva auto-deploy
+  - (Opcional) deshabilita o borra el proyecto para evitar uso accidental
+
+Con esto, todo el flujo de Auth queda centralizado en CloudFront.
+
+## 8) Comandos utiles locales (opcional)
 
 ```bash
 npm run build
