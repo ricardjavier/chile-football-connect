@@ -62,7 +62,7 @@ interface Match {
 interface MatchPlayer {
   id: string;
   user_id: string;
-  profiles: Profile;
+  profiles: Profile | null;
 }
 
 interface JoinedMatchRow {
@@ -82,6 +82,14 @@ export default function MyMatches() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
 
+  const normalizeProfile = (rawProfile: unknown): Profile | null => {
+    if (!rawProfile) return null;
+    if (Array.isArray(rawProfile)) {
+      return (rawProfile[0] as Profile) || null;
+    }
+    return rawProfile as Profile;
+  };
+
   const loadMatchPlayers = useCallback(async (matchId: string) => {
     try {
       const { data, error } = await supabase
@@ -95,9 +103,14 @@ export default function MyMatches() {
 
       if (error) throw error;
 
+      const normalizedPlayers = (data || []).map((player: any) => ({
+        ...player,
+        profiles: normalizeProfile(player.profiles),
+      }));
+
       setPlayers(prev => ({
         ...prev,
-        [matchId]: data as any
+        [matchId]: normalizedPlayers
       }));
     } catch (error) {
       console.error('Error loading players:', error);
@@ -175,16 +188,6 @@ export default function MyMatches() {
         .eq('id', playerId);
 
       if (deleteError) throw deleteError;
-
-      const match = createdMatches.find(m => m.id === matchId);
-      if (match) {
-        const { error: updateError } = await supabase
-          .from('matches')
-          .update({ current_players: Math.max(0, match.current_players - 1) })
-          .eq('id', matchId);
-
-        if (updateError) throw updateError;
-      }
 
       toast({
         title: 'Jugador eliminado',
@@ -395,7 +398,7 @@ export default function MyMatches() {
                           <div className="flex items-center gap-2 text-sm">
                             <Users className="h-4 w-4 text-gray-500" />
                             <span>
-                              {match.current_players}/{match.max_players} jugadores
+                              {(players[match.id]?.length || match.current_players)}/{match.max_players} jugadores
                             </span>
                           </div>
 
@@ -435,14 +438,14 @@ export default function MyMatches() {
                                   <div className="flex items-center gap-3">
                                     <Avatar className="h-10 w-10">
                                       <AvatarFallback>
-                                        {player.profiles.full_name?.charAt(0).toUpperCase() || 'U'}
+                                        {player.profiles?.full_name?.charAt(0).toUpperCase() || 'U'}
                                       </AvatarFallback>
                                     </Avatar>
                                     <div>
                                       <p className="font-medium text-sm">
-                                        {player.profiles.full_name || 'Usuario'}
+                                        {player.profiles?.full_name || 'Usuario'}
                                       </p>
-                                      {player.profiles.level && (
+                                      {player.profiles?.level && (
                                         <p className="text-xs text-gray-500">
                                           {player.profiles.level}
                                         </p>
@@ -457,7 +460,7 @@ export default function MyMatches() {
                                         handleRemovePlayer(
                                           match.id,
                                           player.id,
-                                          player.profiles.full_name || 'Usuario'
+                                          player.profiles?.full_name || 'Usuario'
                                         )
                                       }
                                       className="text-red-600 hover:text-red-700 hover:bg-red-50"

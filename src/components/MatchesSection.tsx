@@ -22,6 +22,11 @@ const MatchesSection = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ city: 'Todas', time: 'all', level: 'all' });
 
+  const isUpcomingMatch = (date: string, time: string) => {
+    const scheduledAt = new Date(`${date}T${time}`);
+    return Number.isNaN(scheduledAt.getTime()) ? false : scheduledAt >= new Date();
+  };
+
   useEffect(() => {
     loadMatches();
   }, []);
@@ -40,8 +45,31 @@ const MatchesSection = () => {
         .limit(20);
 
       if (data) {
-        setMatches(data as any);
-        setFilteredMatches(data as any);
+        const rawMatches = data as MatchWithField[];
+        const upcomingMatches = rawMatches.filter((match) => isUpcomingMatch(match.date, match.time));
+        const matchIds = upcomingMatches.map((match) => match.id);
+
+        let playerRows: { match_id: string }[] = [];
+        if (matchIds.length > 0) {
+          const { data: playersData } = await supabase
+            .from('match_players')
+            .select('match_id')
+            .in('match_id', matchIds);
+          playerRows = (playersData as { match_id: string }[]) || [];
+        }
+
+        const playersByMatch = playerRows.reduce<Record<string, number>>((acc, row) => {
+          acc[row.match_id] = (acc[row.match_id] || 0) + 1;
+          return acc;
+        }, {});
+
+        const matchesWithLiveCounter = upcomingMatches.map((match) => ({
+          ...match,
+          current_players: playersByMatch[match.id] ?? match.current_players,
+        }));
+
+        setMatches(matchesWithLiveCounter);
+        setFilteredMatches(matchesWithLiveCounter);
       }
     } catch (error) {
       console.error('Error loading matches:', error);

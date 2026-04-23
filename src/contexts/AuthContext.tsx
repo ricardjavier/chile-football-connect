@@ -18,8 +18,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const configuredAppUrl = import.meta.env.VITE_APP_URL?.replace(/\/$/, '');
-  const appUrl = configuredAppUrl || window.location.origin;
+  const normalizeBaseUrl = (rawUrl?: string) => {
+    if (!rawUrl) return window.location.origin;
+    try {
+      return new URL(rawUrl).origin;
+    } catch {
+      return window.location.origin;
+    }
+  };
+
+  const appUrl = normalizeBaseUrl(import.meta.env.VITE_APP_URL);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -81,6 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         options: {
           emailRedirectTo: `${appUrl}/login`,
+          data: {
+            full_name: fullName,
+          },
         },
       });
 

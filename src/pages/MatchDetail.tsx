@@ -55,6 +55,14 @@ export default function MatchDetail() {
   const [isJoined, setIsJoined] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const normalizeProfile = (rawProfile: unknown): Profile | null => {
+    if (!rawProfile) return null;
+    if (Array.isArray(rawProfile)) {
+      return (rawProfile[0] as Profile) || null;
+    }
+    return rawProfile as Profile;
+  };
+
   const loadMatch = useCallback(async () => {
     try {
       console.log('🔍 Cargando partido con ID:', id);
@@ -111,8 +119,11 @@ export default function MatchDetail() {
         throw error;
       }
 
-      const playersList = data.map((item: any) => item.profiles).filter(Boolean);
+      const playersList = data
+        .map((item: any) => normalizeProfile(item.profiles))
+        .filter((profile): profile is Profile => Boolean(profile));
       setPlayers(playersList);
+      setMatch((prev) => (prev ? { ...prev, current_players: playersList.length } : prev));
 
       // Verificar si el usuario actual ya está unido
       if (user) {
@@ -154,20 +165,12 @@ export default function MatchDetail() {
 
       if (joinError) throw joinError;
 
-      // Actualizar contador de jugadores
-      const { error: updateError } = await supabase
-        .from('matches')
-        .update({ current_players: (match?.current_players || 0) + 1 })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
       toast({
         title: '¡Te uniste al partido!',
         description: 'Nos vemos en la cancha',
       });
 
-      loadMatch();
+      setIsJoined(true);
       loadPlayers();
     } catch (error: any) {
       toast({
@@ -193,20 +196,12 @@ export default function MatchDetail() {
 
       if (leaveError) throw leaveError;
 
-      // Actualizar contador
-      const { error: updateError } = await supabase
-        .from('matches')
-        .update({ current_players: Math.max(0, (match?.current_players || 1) - 1) })
-        .eq('id', id);
-
-      if (updateError) throw updateError;
-
       toast({
         title: 'Saliste del partido',
         description: 'Puedes volver a unirte cuando quieras',
       });
 
-      loadMatch();
+      setIsJoined(false);
       loadPlayers();
     } catch (error: any) {
       toast({
