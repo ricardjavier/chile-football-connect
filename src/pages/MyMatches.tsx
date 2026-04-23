@@ -65,15 +65,20 @@ interface MatchPlayer {
   profiles: Profile;
 }
 
+interface JoinedMatchRow {
+  match: Match | null;
+}
+
 export default function MyMatches() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
+  const [createdMatches, setCreatedMatches] = useState<Match[]>([]);
+  const [joinedMatches, setJoinedMatches] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Record<string, MatchPlayer[]>>({});
   const [loading, setLoading] = useState(true);
+  const [viewFilter, setViewFilter] = useState<'all' | 'created' | 'joined'>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
 
@@ -101,7 +106,7 @@ export default function MyMatches() {
 
   const loadMyMatches = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data: createdData, error: createdError } = await supabase
         .from('matches')
         .select(`
           *,
@@ -111,14 +116,37 @@ export default function MyMatches() {
         .order('date', { ascending: true })
         .order('time', { ascending: true });
 
-      if (error) throw error;
+      if (createdError) throw createdError;
 
-      setMatches(data as any);
+      setCreatedMatches(createdData as any);
 
       // Cargar jugadores para cada partido
-      if (data && data.length > 0) {
-        data.forEach(match => loadMatchPlayers(match.id));
+      if (createdData && createdData.length > 0) {
+        createdData.forEach(match => loadMatchPlayers(match.id));
       }
+
+      const { data: joinedData, error: joinedError } = await supabase
+        .from('match_players')
+        .select(`
+          match:matches(
+            *,
+            field:fields(id, name, address, city)
+          )
+        `)
+        .eq('user_id', user?.id);
+
+      if (joinedError) throw joinedError;
+
+      const normalizedJoinedMatches = (joinedData as JoinedMatchRow[] | null)
+        ?.map((row) => row.match)
+        .filter((match): match is Match => Boolean(match))
+        .sort((a, b) => {
+          const dateCompare = a.date.localeCompare(b.date);
+          if (dateCompare !== 0) return dateCompare;
+          return a.time.localeCompare(b.time);
+        }) ?? [];
+
+      setJoinedMatches(normalizedJoinedMatches);
     } catch (error: any) {
       console.error('Error loading matches:', error);
       toast({
@@ -148,7 +176,7 @@ export default function MyMatches() {
 
       if (deleteError) throw deleteError;
 
-      const match = matches.find(m => m.id === matchId);
+      const match = createdMatches.find(m => m.id === matchId);
       if (match) {
         const { error: updateError } = await supabase
           .from('matches')
@@ -190,7 +218,8 @@ export default function MyMatches() {
         description: 'El partido fue eliminado correctamente',
       });
 
-      setMatches(matches.filter(m => m.id !== matchToDelete));
+      setCreatedMatches(createdMatches.filter(m => m.id !== matchToDelete));
+      setJoinedMatches(joinedMatches.filter(m => m.id !== matchToDelete));
       setDeleteDialogOpen(false);
       setMatchToDelete(null);
     } catch (error: any) {
@@ -263,30 +292,219 @@ export default function MyMatches() {
           </Button>
         </div>
 
-        {matches.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No has creado ningún partido aún</p>
-              <Button onClick={() => navigate('/crear-partido')}>
-                Crear mi primer partido
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {matches.map((match) => (
-              <Card key={match.id} className="overflow-hidden">
-                <CardHeader className="bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-xl">
-                          {match.field?.name || 'Cancha por definir'}
-                        </CardTitle>
-                        <Badge className={getStatusBadge(match.status)}>
-                          {match.status}
-                        </Badge>
+        <div className="mb-6 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={viewFilter === 'all' ? 'default' : 'outline'}
+            onClick={() => setViewFilter('all')}
+          >
+            Todos
+          </Button>
+          <Button
+            type="button"
+            variant={viewFilter === 'created' ? 'default' : 'outline'}
+            onClick={() => setViewFilter('created')}
+          >
+            Solo creados
+          </Button>
+          <Button
+            type="button"
+            variant={viewFilter === 'joined' ? 'default' : 'outline'}
+            onClick={() => setViewFilter('joined')}
+          >
+            Solo unidos
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {(viewFilter === 'all' || viewFilter === 'created') && (
+          <section className="space-y-4">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <h2 className="text-lg font-semibold text-emerald-900">Partidos creados por mí ({createdMatches.length})</h2>
+              <p className="text-sm text-emerald-700">Estos partidos los administras tú.</p>
+            </div>
+
+            {createdMatches.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-4">No has creado ningún partido aún</p>
+                  <Button onClick={() => navigate('/crear-partido')}>
+                    Crear mi primer partido
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {createdMatches.map((match) => (
+                  <Card key={match.id} className="overflow-hidden border-2 border-emerald-300">
+                    <CardHeader className="bg-emerald-50">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <CardTitle className="text-xl">
+                              {match.field?.name || 'Cancha por definir'}
+                            </CardTitle>
+                            <Badge className={getStatusBadge(match.status)}>
+                              {match.status}
+                            </Badge>
+                            <Badge className="bg-emerald-100 text-emerald-800">Creado por mí</Badge>
+                          </div>
+                          <CardDescription className="flex items-center gap-4 text-sm">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {match.field?.address}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              {format(new Date(match.date), "d 'de' MMMM", { locale: es })}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {match.time.slice(0, 5)}
+                            </span>
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          {match.status === 'abierto' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCancelMatch(match.id)}
+                            >
+                              Cancelar
+                            </Button>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setMatchToDelete(match.id);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-1 space-y-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Users className="h-4 w-4 text-gray-500" />
+                            <span>
+                              {match.current_players}/{match.max_players} jugadores
+                            </span>
+                          </div>
+
+                          {match.price_per_player && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <TrendingUp className="h-4 w-4 text-gray-500" />
+                              <span className="font-semibold text-green-600">
+                                ${match.price_per_player.toLocaleString()} por persona
+                              </span>
+                            </div>
+                          )}
+
+                          <div>
+                            <p className="text-sm text-gray-500 mb-1">Nivel</p>
+                            <Badge variant="outline">{match.level_required}</Badge>
+                          </div>
+
+                          {match.description && (
+                            <div>
+                              <p className="text-sm text-gray-500 mb-1">Descripción</p>
+                              <p className="text-sm text-gray-700">{match.description}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="lg:col-span-2">
+                          <h3 className="font-semibold mb-4 text-gray-900">
+                            Jugadores Inscritos ({players[match.id]?.length || 0})
+                          </h3>
+                          {players[match.id] && players[match.id].length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {players[match.id].map((player) => (
+                                <div
+                                  key={player.id}
+                                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10">
+                                      <AvatarFallback>
+                                        {player.profiles.full_name?.charAt(0).toUpperCase() || 'U'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-medium text-sm">
+                                        {player.profiles.full_name || 'Usuario'}
+                                      </p>
+                                      {player.profiles.level && (
+                                        <p className="text-xs text-gray-500">
+                                          {player.profiles.level}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {match.status === 'abierto' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        handleRemovePlayer(
+                                          match.id,
+                                          player.id,
+                                          player.profiles.full_name || 'Usuario'
+                                        )
+                                      }
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <UserX className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
+                              Aún no hay jugadores inscritos en este partido
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+          )}
+
+          {(viewFilter === 'all' || viewFilter === 'joined') && (
+          <section className="space-y-4">
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3">
+              <h2 className="text-lg font-semibold text-sky-900">Partidos a los que estoy unido ({joinedMatches.length})</h2>
+              <p className="text-sm text-sky-700">Incluye tus partidos creados y también los de otros organizadores.</p>
+            </div>
+
+            {joinedMatches.length === 0 ? (
+              <Card className="text-center py-10">
+                <CardContent>
+                  <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Aún no te has unido a partidos.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {joinedMatches.map((match) => (
+                  <Card key={`joined-${match.id}`} className="border-2 border-sky-300">
+                    <CardHeader className="bg-sky-50">
+                      <div className="flex items-center justify-between gap-2">
+                        <CardTitle className="text-lg">{match.field?.name || 'Cancha por definir'}</CardTitle>
+                        <Badge className="bg-sky-100 text-sky-800">Unido</Badge>
                       </div>
                       <CardDescription className="flex items-center gap-4 text-sm">
                         <span className="flex items-center gap-1">
@@ -302,122 +520,28 @@ export default function MyMatches() {
                           {match.time.slice(0, 5)}
                         </span>
                       </CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      {match.status === 'abierto' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancelMatch(match.id)}
-                        >
-                          Cancelar
-                        </Button>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          setMatchToDelete(match.id);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-1 space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="h-4 w-4 text-gray-500" />
-                        <span>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className={getStatusBadge(match.status)}>{match.status}</Badge>
+                        <Badge variant="outline">{match.level_required}</Badge>
+                        <span className="text-sm text-gray-600">
                           {match.current_players}/{match.max_players} jugadores
                         </span>
-                      </div>
-
-                      {match.price_per_player && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <TrendingUp className="h-4 w-4 text-gray-500" />
-                          <span className="font-semibold text-green-600">
+                        {match.price_per_player && (
+                          <span className="text-sm text-green-700 font-medium">
                             ${match.price_per_player.toLocaleString()} por persona
                           </span>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Nivel</p>
-                        <Badge variant="outline">{match.level_required}</Badge>
+                        )}
                       </div>
-
-                      {match.description && (
-                        <div>
-                          <p className="text-sm text-gray-500 mb-1">Descripción</p>
-                          <p className="text-sm text-gray-700">{match.description}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <h3 className="font-semibold mb-4 text-gray-900">
-                        Jugadores Inscritos ({players[match.id]?.length || 0})
-                      </h3>
-                      {players[match.id] && players[match.id].length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {players[match.id].map((player) => (
-                            <div
-                              key={player.id}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                            >
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-10 w-10">
-                                  <AvatarFallback>
-                                    {player.profiles.full_name?.charAt(0).toUpperCase() || 'U'}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {player.profiles.full_name || 'Usuario'}
-                                  </p>
-                                  {player.profiles.level && (
-                                    <p className="text-xs text-gray-500">
-                                      {player.profiles.level}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              {match.status === 'abierto' && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleRemovePlayer(
-                                      match.id,
-                                      player.id,
-                                      player.profiles.full_name || 'Usuario'
-                                    )
-                                  }
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <UserX className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-                          Aún no hay jugadores inscritos en este partido
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+          )}
+        </div>
       </div>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
